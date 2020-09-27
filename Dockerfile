@@ -1,4 +1,4 @@
-FROM winamd64/openjdk:8
+FROM openjdk:8-jdk-alpine
 
 ARG JAR_FILE=target/scheduler-bot.jar
 ARG JAR_LIB_FILE=target/lib/

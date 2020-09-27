@@ -1,7 +1,6 @@
 package com.yube.bot;
 
 import com.yube.exceptions.CommandParseException;
-import com.yube.exceptions.ConfigurationException;
 import com.yube.model.ScheduleItem;
 import com.yube.redis.RedissonClientFactory;
 import com.yube.utils.Validator;
@@ -11,8 +10,6 @@ import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
