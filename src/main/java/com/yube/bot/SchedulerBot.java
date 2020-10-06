@@ -4,6 +4,8 @@ import com.yube.exceptions.CommandParseException;
 import com.yube.model.ScheduleItem;
 import com.yube.redis.RedissonClientFactory;
 import com.yube.utils.Validator;
+import com.yube.utils.log.LogLevel;
+import com.yube.utils.log.RestLogger;
 import org.redisson.api.RSet;
 import org.redisson.api.RedissonClient;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -32,6 +34,8 @@ public class SchedulerBot extends Bot {
     private final static Pattern SCHEDULE_COMMAND_PATTERN = Pattern.compile("schedule -t \"[a-zA-Z_0-9\\s]+\" -d \"\\d{4}-[01]\\d-[0-3]\\d\\s[0-2]\\d:[0-5]\\d\"( -r \"[1-9]\" -i \"[1-9][0-9]{0,3}\")?");
     private final static Pattern SCHEDULE_ALL_COMMAND_PATTERN = Pattern.compile("schedule all");
 
+    private final static RestLogger logger = RestLogger.getInstance();
+
     protected SchedulerBot(String token, String botName) {
         super(token, botName);
 
@@ -42,7 +46,7 @@ public class SchedulerBot extends Bot {
             }
         };
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(3);
-        executor.scheduleAtFixedRate(task, 0, 10L, TimeUnit.SECONDS);
+        executor.scheduleAtFixedRate(task, 30L, 10L, TimeUnit.SECONDS);
     }
 
     @Override
@@ -161,14 +165,17 @@ public class SchedulerBot extends Bot {
 
     private void processScheduleItems() {
         try {
+            logger.log(LogLevel.DEBUG, "Scheduling process started");
             RedissonClient client = RedissonClientFactory.getInstance().getRedissonClient();
             RSet<ScheduleItem> scheduleItems = client.getSet("scheduleItems");
+            logger.log(LogLevel.DEBUG, String.format("Items in the Redis Database: %d", scheduleItems.size()));
             for (ScheduleItem scheduleItem : scheduleItems) {
                 if (LocalDateTime.now().isAfter(scheduleItem.getTime())) {
                     sendTextMessage(scheduleItem.getChatId(), scheduleItem.getText());
                     scheduleItems.remove(scheduleItem);
                 }
             }
+            logger.log(LogLevel.DEBUG, "Scheduling process ended");
         } catch (Exception e) {
             processException(e);
         }

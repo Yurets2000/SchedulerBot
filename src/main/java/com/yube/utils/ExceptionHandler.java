@@ -1,13 +1,13 @@
 package com.yube.utils;
 
-import org.apache.log4j.Logger;
+import com.yube.utils.log.LogLevel;
+import com.yube.utils.log.RestLogger;
 
 public final class ExceptionHandler {
 
-    private static Logger log = Logger.getLogger(ExceptionHandler.class.getName());
+    private final static RestLogger logger = RestLogger.getInstance();
 
     public static void processException(Exception e) {
-        log.error(e.getMessage(), e);
-        //e.printStackTrace();
+        logger.log(LogLevel.ERROR, e.getMessage());
     }
 }

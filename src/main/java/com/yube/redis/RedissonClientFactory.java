@@ -15,7 +15,7 @@ public final class RedissonClientFactory {
 
     private RedissonClientFactory() throws Exception {
         Config config = new Config();
-        String address = "redis://" + System.getenv("REDIS_ADDR");
+        String address = "redis://127.0.0.1:6379";
         config.useSingleServer().setAddress(address);
         client = Redisson.create(config);
     }
