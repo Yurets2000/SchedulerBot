@@ -4,8 +4,7 @@ import com.yube.exceptions.CommandParseException;
 import com.yube.model.ScheduleItem;
 import com.yube.redis.RedissonClientFactory;
 import com.yube.utils.Validator;
-import com.yube.utils.log.LogLevel;
-import com.yube.utils.log.RestLogger;
+import io.prometheus.client.Counter;
 import org.redisson.api.RSet;
 import org.redisson.api.RedissonClient;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -34,7 +33,12 @@ public class SchedulerBot extends Bot {
     private final static Pattern SCHEDULE_COMMAND_PATTERN = Pattern.compile("schedule -t \"[a-zA-Z_0-9\\s]+\" -d \"\\d{4}-[01]\\d-[0-3]\\d\\s[0-2]\\d:[0-5]\\d\"( -r \"[1-9]\" -i \"[1-9][0-9]{0,3}\")?");
     private final static Pattern SCHEDULE_ALL_COMMAND_PATTERN = Pattern.compile("schedule all");
 
-    private final static RestLogger logger = RestLogger.getInstance();
+    private static final Counter requests = Counter.build()
+            .name("requests_total").help("Total requests").register();
+    private static final Counter valid_requests = Counter.build()
+            .name("valid_requests_total").help("Total valid requests").register();
+    private static final Counter redis_requests = Counter.build()
+            .name("redis_requests_total").help("Total Redis requests").register();
 
     protected SchedulerBot(String token, String botName) {
         super(token, botName);
@@ -51,6 +55,7 @@ public class SchedulerBot extends Bot {
 
     @Override
     public void onUpdateReceived(Update update) {
+        requests.inc();
         if (update.hasMessage() && update.getMessage().hasText()) {
             Message message = update.getMessage();
             long chatId = message.getChatId();
@@ -58,6 +63,7 @@ public class SchedulerBot extends Bot {
             Matcher scheduleCommandMatcher = SCHEDULE_COMMAND_PATTERN.matcher(text);
             Matcher scheduleAllCommandMatcher = SCHEDULE_ALL_COMMAND_PATTERN.matcher(text);
             if (text.equals("ping")) {
+                valid_requests.inc();
                 String redisAddress = System.getenv("REDIS_ADDR");
                 if (redisAddress != null) {
                     sendTextMessage(chatId, redisAddress);
@@ -65,6 +71,7 @@ public class SchedulerBot extends Bot {
                     sendTextMessage(chatId, "pong");
                 }
             } else if (scheduleCommandMatcher.matches()) {
+                valid_requests.inc();
                 try {
                     ScheduleItem scheduleItem = extractScheduleItem(chatId, text);
                     try {
@@ -81,6 +88,7 @@ public class SchedulerBot extends Bot {
                     processException(e);
                 }
             } else if (scheduleAllCommandMatcher.matches()) {
+                valid_requests.inc();
                 try {
                     RedissonClient client = RedissonClientFactory.getInstance().getRedissonClient();
                     RSet<ScheduleItem> inMemoryScheduleItems = client.getSet("scheduleItems");
@@ -165,17 +173,15 @@ public class SchedulerBot extends Bot {
 
     private void processScheduleItems() {
         try {
-            logger.log(LogLevel.DEBUG, "Scheduling process started");
+            redis_requests.inc();
             RedissonClient client = RedissonClientFactory.getInstance().getRedissonClient();
             RSet<ScheduleItem> scheduleItems = client.getSet("scheduleItems");
-            logger.log(LogLevel.DEBUG, String.format("Items in the Redis Database: %d", scheduleItems.size()));
             for (ScheduleItem scheduleItem : scheduleItems) {
                 if (LocalDateTime.now().isAfter(scheduleItem.getTime())) {
                     sendTextMessage(scheduleItem.getChatId(), scheduleItem.getText());
                     scheduleItems.remove(scheduleItem);
                 }
             }
-            logger.log(LogLevel.DEBUG, "Scheduling process ended");
         } catch (Exception e) {
             processException(e);
         }

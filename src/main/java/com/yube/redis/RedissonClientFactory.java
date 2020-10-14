@@ -1,12 +1,8 @@
 package com.yube.redis;
 
-import com.yube.exceptions.ConfigurationException;
-import com.yube.utils.PropertiesHandler;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
-
-import java.util.Properties;
 
 public final class RedissonClientFactory {
 
@@ -15,7 +11,7 @@ public final class RedissonClientFactory {
 
     private RedissonClientFactory() throws Exception {
         Config config = new Config();
-        String address = "redis://127.0.0.1:6379";
+        String address = "redis://host.docker.internal:6379";
         config.useSingleServer().setAddress(address);
         client = Redisson.create(config);
     }
